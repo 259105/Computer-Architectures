@@ -1,3 +1,0 @@
-Students can use the license of Politecnico for installing EMU8086 on their PC.
-- license name: LINO TODESCO
-– licensecode: 27RX-A747-6I2R-4J2W-1K6O
