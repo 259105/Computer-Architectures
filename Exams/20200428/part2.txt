@@ -1,0 +1,54 @@
+cosine			PROC
+			; r0 = x
+			MUL r0, r0, r0		; x^2
+			LSR r0, #8		; x^2/256
+			RSB r0, r0, #128	; 128 - r0
+			BX LR
+			ENDP
+
+doubleAngleSine		PROC
+			PUSH {LR}
+			;r0 = x
+			; begin abs of x on r1
+			MOV r1, r0;		; save the signed value
+			ASR r2, r1, #31
+			ADD r1, r2, r1
+			EOR r1, r2, r1
+			; end abs of r0 in r1
+			CMP r1, #64
+			BLO endAngleSine	; if -64<x<64 return x
+			ASR r0, #1		; x/2
+			PUSH {r0}		; save r0
+			BL cosine		; it returns 128*cos(x/2) in r0
+			MOV r1, r0		; move r0 in r1
+			POP {r0}		; take the x/2
+			PUSH {r1}		; save the return of cosine in r1
+			BL dubleAngleSine	; it returns 128*sin(x/2) in r0
+			POP {r1}		; take the return of first cosine
+			MUL r0, r0, r1		; save the returned values
+			ASR r0, #6		; divide by 64
+endAngleSine		POP{PC}
+			ENDP
+
+dubleAngleCosine	PROC
+			PUSH {LR}
+			; r0 = x
+			; begin abs of r0 in r1
+			MOV r1, r0		; save the signed value
+			ASR r2, r1, #31
+			ADD r1, r2, r1
+			EOR r1, r2, r1
+			; end abs
+			CMP r1, #128
+			BHS contAngleCos
+				; -128<r1<128
+				BL cosine	; in r0 is saved the result
+				B endAngleCosine
+contAngleCos		ASR r0, #1		; x/2
+			BL doubleAngleSine	; in r0 is saved the sine of x/2
+			MUL r0, r0, r0		; r0^2
+			ASR r0, #6		; r0/64
+			RSB r0, r0, #128	; r0 = 128 - r0			
+endAngleCosine		POP{PC}
+			ENDP
+

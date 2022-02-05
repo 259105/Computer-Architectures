@@ -1,0 +1,26 @@
+Requirement 1
+input		output
+2		1
+3		1
+4		0
+10201		0
+22733		0
+1234657		1
+
+Requirement 2
+input		output		(second prime number)
+123456 		7		123449
+54244		233 = 0xE9	54011
+503222 		523 = 0x20B	502699
+
+Other combinations of prime numbers are acceptable.
+To test if a number is prime, you can use this:
+http://compoasso.free.fr/primelistweb/page/prime/liste_online_en.php
+
+Requirement 3
+input				output (led)
+28 = 11100			00000101
+40 = 101000			00000011
+?122 = 1111010			00001101
+63274 = 1111011100101010	11111111	(since 293 > 255)
+10 = 1010			00000011

@@ -1,0 +1,25 @@
+In file startup_LPC17xx.s
+connect4			DCB 0, 0, 0, 0, 2, 0, 0
+			DCB 0, 0, 0, 2, 1, 0, 0
+			DCB 1, 0, 2, 1, 2, 1, 2
+			DCB 2, 2, 2, 1, 1, 1, 1
+			DCB 1, 2, 1, 2, 1, 2, 2
+			DCB 2, 1, 1, 1, 2, 1, 1
+
+with X = 1:
+- checkRow = 1
+- checkDiagonal = 0
+
+with X = 2:
+- checkRow = 0
+- checkDiagonal = 1
+
+In file sample.c
+char grid[42] = {0, 0, 0, 0, 2, 0, 0,
+		0, 0, 0, 2, 1, 0, 0,
+		1, 0, 1, 1, 1, 2, 2,
+		2, 2, 2, 1, 2, 1, 1,
+		1, 2, 1, 2, 1, 2, 2,
+		2, 1, 1, 1, 2, 1, 1};
+Pressing KEY1 LED 9 has to power on.
+Pressing KEY2 LED 7 has to power on.

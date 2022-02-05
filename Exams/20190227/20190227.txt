@@ -1,0 +1,83 @@
+iterativeCollatz		PROC
+				EXPORT iterativeCollatz
+				; r0 = n
+				MOV r1, #1		; result
+cycleIterative			TST r0, #1
+				BEQ isEvenIterative
+					; isOddIterative
+					LSL r2, r0, #1	; r2=r0*2
+					ADD r0, r2	; r0=3*r0
+					ADD r0, #1	; r0=3*r0+1
+					B continueIterative
+isEvenIterative			LSR r0, #1		; r0/2
+continueIterative		ADD r1, #1		; update the number of elements
+				CMP r0, #1		
+				BNE cycleIterative	; loop until r0 == 1
+				MOV r0, r1		; save the return
+				BX LR
+				ENDP
+
+recursiveCollatz		PROC
+				EXPORT recursiveCollatz
+				; r0 = Ci
+				; r1 = i
+				PUSH {LR}
+				ADD r1, #1		; increase i
+				CMP r0, #1		
+				BEQ endRecursive	; if P1	is 1 return
+				TST r0, #1
+				BEQ isEvenRecursive
+					; isOddRecursive
+					LSL r2, r0, #1	; r2=r0*2
+					ADD r0, r2	; r0=3*r0
+					ADD r0, #1	; r0=3*r0+1
+					B continueRecursive
+isEvenRecursive			LSR r0, #1		; r0/2
+continueRecursive		BL recursiveCollatz
+endRecursive			POP {PC}
+				ENDP
+
+startTimer			PROC
+				EXPORT startTimer
+				LDR r0, =Control
+				MOV r1, #0
+				STR r1, [r0]	; stop the timer
+				
+				LDR r0, =Reload	
+				LDR r1, =0xFFFFFF
+				STR r1, [r0]	; set the tick time 
+			
+				LDR r0, =Current
+				STR r1, [r0]	; set a random value
+				
+				LDR r0, =Control
+				MOV r1, #2_111
+				STR r1, [r0]	; start the timer				
+
+				BX LR
+				ENDP
+
+getTime				PROC
+				EXPORT geTime
+				LDR r0, =Current
+				BX LR
+				ENDP
+
+extern void startTimer(void);
+
+int main(void){
+  startTimer();
+}
+
+extern unsigned int getTime(void);
+extern int iterativeCollatz(unsigned int n);
+extern int recursiveCollatz(unsigned int n, int i);
+
+void INT0(void){
+  unsigned int t;
+  int r;
+  t = getTime();
+  r = iterativeCollatz(t);
+  if(r>255) LPC_GPIO2->FIOPIN=0xFF;
+  else LPC_GPIO2->FIOPIN=r;
+}

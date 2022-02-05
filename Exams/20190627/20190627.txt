@@ -1,0 +1,102 @@
+isPrimeNumber			PROC
+				;r0 = n
+				EOR r1, r1		; result
+				CMO r0, #1		; if it is 1 return
+				BEQ endPrimeNumber
+				MOV r2, #2		; counter for checking the divisibility
+cyclePrime			DIV r3, r0, r2		; r3 = r0/r2
+				MUL r3, r3, r2		; r3 = r3*r2
+				CMP r3, r0		
+				BEQ endPrimeNumber	; if they are equal, therefore r0 is divisible by r2
+				ADD r2, #1		; go to next number
+				MUL r3, r2, r2		; r3 = r2^2
+				CMP r3, r0		
+				BLS cyclePrime		; loop until r2^2<=r0, square method
+				MOV r1, #1		; the code is reached only if the number is prime
+endPrimeNumber			MOV r0, r1		; return value in r0
+				BL LR
+				ENDP
+
+GoldbachConjecture		PROC
+				EXPORT GoldbachConjecture
+				PUSH {LR}
+				; r0 = n
+				EOR r1, r1		; result
+				CMP r0, #3		
+				BLS endGConjecture	; because numbers 0, 1, 2, 3 return 0
+				MOV r2, #2		; index
+cycleGConjecture		PUSH {r0-r2}		; save register in order to call isPrimeNumber
+				MOV r0, r2		; put the parameter of isPrimeNumber in r0
+				BL isPrimeNumber	; call the procedure
+				CMP r0, #1		; check if the number is prime
+				POP {r0-r2}		; i can do it because flags don't change
+				BNE continue		; if the number isn't prime continue
+				SUB r3, r0, r2		; calculate other addend
+				PUSH {r0-r3}		; |
+				MOV r0, r3		; |
+				BL isPrimeNumber	; | pratically the same but for second addend
+				CMP r0, #1		; |
+				POP {r0-r3}		; |
+				BNE continue 		; |
+				MOV r1, r2		; save the return value, if both are prime
+				B endGConjecture	; go the end
+continue			ADD r2, #1		; next number
+				LSR r3, r0, #1		; r3 = r0/2
+				CMP r2, r3		
+				BLS cycleGConjecture
+endGConjecture			MOV r0, r1		; save the return
+				POP {PC}
+				ENDP
+
+startTimer			PROC
+				; this procedure starts a timer that ticks every 0.1s
+			; if the clock of LPC1768 is about 100MHz, we need to set a timer of 10 000 000 ticks
+				MOV r1, #10000000
+				
+				LDR r0, =Control
+				EOR r2, r2
+				STR r2, [r0]		; stop the timer by setting 0 to controlStatusReg
+				
+				LDR r0, =Reload
+				STR r1, [r0]		; set the ticks
+				LDR r0, =Current
+				STR r1, [r0]		; set a random value to currentStatus ragister
+				
+				LDR r0, =Control
+				MOV r1, #7		; #2_111 for starting the timer
+				STR r1, [r0]		; start the timer
+				ENDP
+---------------
+int main(void){
+  startTimer();
+}
+
+---------------
+extern unsigned int GoldbachConjecture(unsigned int n);
+
+unsigned int n=0;
+
+void int0(void){
+  if(n!=0){
+    n = n<<1;
+    unsigned int r = GoldbachConjecture(n);
+    if(r>255) LPC_GPIO2->FIOPIN=0xFF;
+    else LPC_GPIO2->FIOPIN=r;
+    n=0;
+  }
+
+}
+
+void key1(void){
+  if(n!=0)
+    n = n<<1;
+}
+
+void key2(void){
+  if(n==0){
+    n++;
+  }else{
+    n = n<<1;
+    n++;
+  }
+}				

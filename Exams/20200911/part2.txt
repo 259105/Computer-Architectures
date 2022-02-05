@@ -1,0 +1,209 @@
+isContained		PROC
+			PUSH {r4, LR}
+			; r0 string1
+			; r1 string2
+			LDR r2, =mySpace	; address of mySpace
+cycle1			LDRB r3, [r0], #1	; take the i-th char of string1
+			CMP r3, 0
+			BEQ continue1		; if the i-th value is 0, stop the cycle1
+			LDRB r4, [r2, r3]	; take the number of occurrences of that char
+			ADD r4, #1		; increment the occurences
+			STR r4, [r2, r3]	; store the occurence
+			B cycle1
+			; now in mySpace there are the occurences of chars
+continue1		LDRB r3, [r1], #1	; take the j-th char of string2
+			CMP r3, 0		
+			BEQ continue2
+			LDRB r4, [r2, r3]	; take the number of occurences of that char
+			SUB r4, #1		; decrement the occurrences
+			STR r4, [r2, r3]	; store the result
+			B continue1
+			; now we have to check if there is a negative occurence in mySpace
+			; in that case the procedute have to return 0, otherwise 1
+continue2		MOV r0, #1		; result value set to 1
+			MOV r1, #128		; setup the for loop
+cycle2			LDRB r3, [r2], #1
+			CMP r3, 0
+			BGE continue3
+				; negative occurence
+				XOR r0, r0	; return 0
+				B endContained
+continue3		SUBS r1, #1
+			BNE cycle2
+endContained		POP {r4, PC}			
+			ENDP
+
+isAnagram		PROC
+			PUSH {LR}
+			; r0 string1
+			; r1 string2
+			BL isContained	; call Contained to fill the mySpace
+			CMP r0, 0		; if result is 0, then isn't an anagram
+			BEQ endAnagram
+			LDR r2, =mySpace	; take mySpace result from isContained
+			MOV r1, #128
+cycle1Anagram		LDRB r3, [r2], #17	; take the occurence of i-th char
+			CMP r3, 0
+			BEQ continueAnagram	
+				; occurence not equal to 0 => string2 isn't the anagram of string1
+				EOR r0,r0
+				B endAnagram 
+continueAnagram		SUBS r1, #1
+			BNE cycleAnagram
+endAnagram		POP {PC}
+			ENDP
+
+longestSubstring	PROC
+			; r0 string1
+			; r1 string2
+			PUSH {r4, r5, LR}
+			EOR r5, r5		; max
+cycleOuter		LDRB r2, [r1]
+			CMP r2, 0
+			BEQ endLonghest
+			PUSH {r1, r0}
+			EOR r4, r4		; current max
+cycleSubString		LDRB r2, [r1], #1	; take the i-th char
+			CMP r2, 0
+			BEQ continue		; if the string2 is end
+cycleOutString		LDRB r3, [r0], #1	; take the j-th char
+			CMP r3, 0
+			BEQ continue		; if string1 is end
+			CMP r2, r3
+			BNE cycleOutString	; r2!=r3
+			; r2==r3
+			ADD r4, #1
+			B cycleSubString	; go to next substring char
+continue		CMP r4, r5		; cmp the current max with the global max
+			BLS noMax
+				; r4>r5
+				MOV r5, r4
+noMax			POP {r1, r0}
+			ADD r1, #1
+			B cycleOuter
+endLongest		MOV r0, r4
+			POP {r4, r5, PC}
+			ENDP
+
+-------------------------------------------------------------------------------------------------------
+.model small
+.stack
+.data
+mySpace DB 128 DUP(?)
+string1 DB 'computer architectures',0
+string2 DB 'spectrometer',0
+.code
+.startup
+			MOV SI, offset string1
+			MOV DI, offset string2
+			XOR AX, AX
+			PUSH SI
+			PUSH DI
+			PUSH AX
+			CALL isAnagram
+			PUSH AX
+			PUSH DI
+			PUSH SI
+.exit
+
+isContained 		PROC NEAR
+			PUSH BP
+			MOV BP, SP
+			PUSHA
+			MOV SI, [BP+8]		; SI = string1
+cycle1			MOV DI, BYTE PTR [SI]	; take i-th char from string1
+			ADD SI, 1		; go to next char
+			CMP DI, 0
+			JEQ continue1
+			ADD BYTE PTR mySpace[DI], 1	; increment the occurences
+			JMP cycle1
+continue1		MOV SI, [BP+6]		; SI = string2
+cycle2			MOV DI, BYTE PTR [SI]	; take j-th char from string2
+			ADD SI, 1		; go to next char
+			CMP DI, 0		
+			BEQ continue2
+			SUB BYTE PTR mySpace[DI], 1	; decrement the occurences
+			JMP cycle2
+continue2		MOV CX, 128		; dimention of mySpace
+			XOR SI, SI		; index for scannig mySpace
+cycle3			CMP BYTE PTR mySpace[SI], 0
+			JGE continue3
+				; mySpace[SI]<0
+				MOV [BP+4], 0	; return 0
+				JMP endContained
+continue3		ADD SI, 1	; go to next
+			LOOP cycle3
+			POPA
+			POP BP
+			RET
+			ENDP
+
+isAnagram		PROC NEAR
+			PUSH BP
+			MOV BP, SP
+			PUSHA
+			PUSH [BP+8]
+			PUSH [BP+6]
+			PUSH [BP+4]
+			CALL isContained
+			POP [BP+4]
+			POP DI
+			POP SI
+			CMP [BP+4], 0
+			JE endAnagram
+			MOV CX, 128		; dimention of mySpace
+			XOR SI, SI
+cycleAnagram:		CMP mySpace[SI], 0
+			JNE endAnagram
+			ADD SI, 1		; go to next occurence
+			LOOP cycleAnagram
+			MOV [BP+4], 1
+endAnagram:		POPA
+			POP BP
+			RET			
+			ENDP
+
+longestSubstring 	PROC NEAR
+            		PUSH BP
+            		MOV BP, SP
+            		PUSHA
+            		XOR AL, AL		; result
+			MOV SI, [BP+8]		; take string1
+			MOV DI, [BP+6]		; take string2
+cycleOuter:		CMP [DI], 0
+			JE endLongest
+			PUSH SI
+			PUSH DI
+			XOR AH, AH		; current max
+cycleSubstring:		MOV DL, BYTE PTR [DI]	; take the i-th char from string2
+			ADD DI, 1		; update index for the next cycle
+			CMP DL, 0
+			JE continue		; if the char is 0 end the procedure
+cycleOutstring:		MOV DH, BYTE PTR [SI]	; take the j-th char from string1
+			ADD SI, 1		; update index for the next cycle
+			CMP DH, 0
+			JE continue		; if the char is 0 end the procedure
+			CMP DL, DH
+			JNE cycleOutstring	; if char i-th and j-th aren't equal go to next char of string1
+				; DL==DH
+				ADD AH, 1	; update the current max
+				JMP cycleSubstring	; go the next char in the substring
+continue:		CMP AH, AL
+			JBE noMax
+				; if AH(current) > AL(global)
+				MOV AL, AH	; save the new max
+noMax:			POP DI
+			POP SI
+			ADD DI, 1		; go to next substring
+			JMP cycleOuter
+endLongest:		MOV [BP+4], AL 		; save the result
+			MOV [BP+5], 0		;   
+           		POPA
+            		POP BP
+            		RET
+            		ENDP
+
+end
+
+
+

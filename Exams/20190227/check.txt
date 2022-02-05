@@ -1,0 +1,8 @@
+Requirements 1 e 2
+input		output
+1		1
+27		112
+
+Requirement 3
+Passing as input the value of the timer counter, the output value has to be the same as the one computed by:
+https://www.dcode.fr/collatz-conjecture

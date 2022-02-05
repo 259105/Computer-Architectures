@@ -1,0 +1,93 @@
+radical			PROC
+			EXPORT radical
+			PUSH {r4, LR}
+			; r0 = x
+			MOV r1, #2		; index
+			XOR r2, r2		; used to know if the index was already multiplied
+			MOV r3, #1		; result
+cycleRadical		DIV r4, r0, r1		; divide by the index
+			MUL r4, r4, r1		; multiply by the index, in this way we can know if it is a divisor
+			CMP r4, r0
+			BEQ isDivisor
+				; isntDivisor
+				ADD r1, #1	; next index
+				XOR r2, r2	; reset the flag
+				B cycleRadical
+isDivisor		CMP r2, #0
+			BNE alreadyCounted
+				; multiply the index
+				MUL r3, r3, r1	; multiply to the result
+				ADD r2, #1	; set the flag as already counted index
+alreadyCounted		DIV r0, r0, r1		; divide for the next iteration
+			CMP r0, #1		
+			BNE cycleRadical	; loop untill x = 1
+			MOV r0, r4		; for return
+			POP {r4,PC}
+			ENDP
+
+coprime			PROC
+			EXPORT coprime
+			; r0 = u
+			; r1 = v
+			AND r2, r0, #1		; take first bit of u
+			LSL r2, #1		; shift first bit in the second bit
+			AND r3, r1, #1		; take first bit of v
+			ORR r2, r2, r3		; union of results
+			CMP r2, #2_00		; if both are even
+			BNE notBothEven	
+				; both even
+				EOR r0, r0	; return 0
+				B endCoprime
+notBothEven		TST r0, #1		; tst the fisrt bit of u
+			BNE continue		; if it odd go to continue
+			; u is even
+			ASR r0, #1		; u = u/2
+			B notBothEven
+continue		TST r1, #1		; tst the first bit of v
+			BNE continue2		; if v is odd go to continue2
+			; v is even
+			ASR r1, #1		; v = v/2
+			B continue
+continue2		CMP r0, r1
+			BLE continue3
+				; u>v
+				EOR r0, r0, r1	; swapping
+				EOR r1, r1, r0
+				EOR r0, r0, r1	; swapping
+continue3		SUB r1, r1, r0		; v= v-u
+			CMP r1, #0
+			BNE continue		; loop untill v!=0
+			CMP r0, #1
+			BEQ returnTrue
+				; returnFalse
+				EOR r0, r0	; return 0
+				B endCoprime
+returnTrue		MOV r0, #1		; return 1
+endCoprime		BX LR
+			ENDP
+
+extern int radical(int n);
+extern int coprime(int u, int v);
+int main(void){
+  int a=27;
+  int b=1;
+  int c;
+  int sol=0;
+  int exceptions=0;
+
+  while(sol!=100){
+    c=a+b;
+    if(coprime(a,b) && coprime(b,c) && coprime(a,c)){
+      sol++;
+      if(c>radical(a*b*c)){
+        exceptions++;
+      }
+    }
+    b++;
+  }
+
+  // switch on the led
+  LPC_GPIO2->FIOPIN = 0x80 >> exceptions;
+
+  while(1);
+}

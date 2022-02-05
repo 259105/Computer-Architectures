@@ -1,0 +1,120 @@
+---------------------------8086-------------------------------------------------------------------------------------
+R EQU 4
+C EQU 4
+.model small
+.stack
+.data
+SOURCE DW 10, 20, 100, 10000, 0, 7000, 1, 2, 9000, 12345, 999, 30000, 200, 210, 7, 65000 ; saved by rows
+MAPP DB 4*4 DUP(?)
+CROSS DW ?
+.code
+.startup
+
+			XOR SI, SI		; used to access SOURCE
+			XOR DI, DI		; used to access MAPP
+			MOV CROSS, 0 		; reset CROSS
+			MOV CX, R*C 		; counter for loop, cycle R*C times
+cycle:			XOR AX, AX		; variable used to store the value
+			MOV AX, SOURCE[SI] 	; take the value from Source
+			CMP AH, 0		; check if the higher part of AX is equals to 0
+			JNE isWord
+				; AH == 0 => isByte
+				ADD CROSS, AX 	; add the byte value to CROSS (the addition is done word to word, because CROSS is a word type)
+				MOV MAPP[DI], 1 ; since the number is a Byte we save 1
+				JMP continue
+isWord: 		MOV MAPP[DI], 0 	; since the number is a Word we save 0
+continue: 		ADD DI, 1		; go forward in MAPP
+			ADD SI, 2		; go forward in SOURCE
+			LOOP cycle
+.exit
+end
+
+;for question 2. In this case cannot be possible an Overflow because the matrix is small (only 16 elements). If the matrix of SRC was of more than 255 elements the overflow have been possible
+
+
+----------------------------------startup_LPC17xx.s-----------------------------------------------------------------
+restoringSquareRoot	PROC 
+			EXPORT restoringSquareRoot 
+			; r0 = x 
+			; r1 = k 
+			PUSH {r4-r7, LR} 
+			LSL r2, r0, #1		; r2 = r 
+			EOR r3, r3		; r3 = Q 
+			SUB r4, r1, #1 		; k-1 = number of shift to do 
+			MOV r5, #1		; useful to setup T 
+			LSL r4, r5, r4		; r4 = T, obtained shifting k-1 times 1 
+			MOV r5, #1		; r5 = i
+
+cycle			CMP r2, r4		; cmp r, T 
+			BLO rLowerT
+				; r great equal T 
+				SUB r2, r4 	; r = r-T 
+				MOV r6, #1 	; set up the number to calculate 2^-i
+				SUB r7, r1, r5 	; calculate the offset: k-i: indicates the number of shift to do
+				LSL r6, r6, r7 	; compute the 2^-i
+				ADD r3, r6 	; Compute Q = Q + 2^-i 
+rLowerT			MOV r4, r3, LSL #1 	; T= 2*Q 
+			CMP r5, r1 		; cmp i and K 
+			BNE notLastCycle
+				; last cycle 
+				EOR r6, r6
+				B continue 
+notLastCycle		MOV r6, #1 		; set up the number 
+			SUB r7, r1, r5 		; calculate the offset 
+			SUB r7, #1 		; i+1 
+			LSL r6, r6, r7 		; compute the 2^-(i+1) 
+continue		ADD r4, r6 		; Compute T
+			LSL r2, #1 		; r = r*2
+
+			ADD r5, #1 		; go forward
+			CMP r5, r1 
+			BLS cycle		; loop untill i<=k
+
+			MOV r0, r3 		; save the return result
+			POP {r4-r7, PC} 
+			ENDP
+
+-----------------------------------------IRQ_button.c---------------------------------------------------------------
+#include "button.h"
+#include "lpc17xx.h"
+#include "../led/led.h"
+
+extern int restoringSquareRoot(int x, int k);
+
+int n=0;
+int c=0;
+
+void EINT0_IRQHandler (void){
+  int r;
+  r = restoringSquareRoot(n,c);
+
+  LPC_GPIO2->FIOPIN = r;
+  
+  n=0;
+  c=0;
+	
+  LPC_SC->EXTINT |= (1 << 0);     /* clear pending interrupt         */
+}
+
+
+void EINT1_IRQHandler (void){
+  if(n!=0){
+    n = n<<1;		// add a 0
+    c++; 		// increment counter
+  }
+
+  LPC_SC->EXTINT |= (1 << 1);     /* clear pending interrupt         */
+}
+
+void EINT2_IRQHandler (void){
+  if(n==0){
+    n++; 		// add 1 
+  }else{
+    n=n<<1; 		// shift 1 bit left 
+    n++; 		// add a 1
+  }
+  c++;			// increment counter
+	
+  LPC_SC->EXTINT |= (1 << 2);     /* clear pending interrupt         */    
+}
+

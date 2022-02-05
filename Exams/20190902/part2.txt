@@ -1,0 +1,176 @@
+checkRow		PROC
+			EXPORT checkRow
+			PUSH {r4-r5, LR}
+			; r0 = to check
+			; r1 = matrix address
+			EOR r5, r5			; result
+			MOV r2, #6			; external loop counter
+cycleRow		PUSH {r1}			; save the matrix address
+			MOV r3, #4			; internal loop counter
+cycleInner		PUSH {r1}			; save the colum address
+			LDRB r4, [r1], #1		; take the current value and go to next
+			CMP r4, r0			; check if it belongs to the current player
+			BNE continue			; go to endCheck if it don't belogn to the player
+			LDRB r4, [r1], #1
+			CMP r4, r0
+			BNE continue
+			LDRB r4, [r1], #1
+			CMP r4, r0
+			BNE continue
+			LDRB r4, [r1]
+			CMP r4, r0
+			BNE continue
+			MOV r5, #1			; we have found a horizontal sequence
+			B endCheckRow
+continue		POP {r1}			; get the colum address
+			ADD r1, #1			; go to next 4 cells to check
+			SUBS r3, #1			; decrement the counter of inner loop
+			BNE cycleInner
+			POP {r1}			; get the matrix address
+			ADD r1, #7			; go to next line
+			SUBS r2, #1			; decrement the counter
+			BNE cycleRow
+endCheckRow		MOV r0, r5			; return value
+			POP {r4-r5, PC}
+			ENDP
+
+checkDiagonal		PROC
+			EXPORT checkDiagonal
+			PUSH {r4-r5, LR}
+			; r0 = to check
+			; r1 = matrix address
+			EOR r5, r5			; result
+			ADD r1, #21			; go to interessed row
+			MOV r2, #3			; external loop counter
+cycleRow1		PUSH {r1}			; save the matrix address
+			MOV r3, #4			; internal loop counter
+cycleInner1		PUSH {r1}			; save the colum address
+			LDRB r4, [r1], #-6		; take the current value and go to next
+			CMP r4, r0			; check if it belongs to the current player
+			BNE continue			; go to endCheck if it don't belogn to the player
+			LDRB r4, [r1], #-6
+			CMP r4, r0
+			BNE continue
+			LDRB r4, [r1], #-6
+			CMP r4, r0
+			BNE continue
+			LDRB r4, [r1]
+			CMP r4, r0
+			BNE continue
+			MOV r5, #1			; we have found a horizontal sequence
+			B endCheckRow
+continue1		POP {r1}			; get the colum address
+			ADD r1, #1			; go to next 4 cells to check
+			SUBS r3, #1			; decrement the counter of inner loop
+			BNE cycleInner
+			POP {r1}			; get the matrix address
+			ADD r1, #7			; go to next line
+			SUBS r2, #1			; decrement the counter
+			BNE cycleRow
+endCheckDiagonal	MOV r0, r5			; return value
+			POP {r4-r5, PC}
+			ENDP
+
+
+extern int checkRow(int player, int **grid);
+extern int checkDiagonal(int player, int **grid);
+extern int **grid;
+
+void pressedINTO(){
+  LPC_GPIO2->FIOCLR=0xFF
+}
+
+void pressedKEY1(){
+  int horizontal=checkRow(1,grid);
+  int diagonal=checkDiagonal(1,grid);
+  if(horizontal==0 && diagonal==0){
+    LPC_GPIO2->FIOPIN=0x01;
+  }else if(horizontal==1){
+    LPC_GPIO2->FIOPIN=0x02;
+  }else{
+    LPC_GPIO2->FIOPIN=0x04;
+  }
+}
+
+void pressedKEY2(){
+  int horizontal=checkRow(2,grid);
+  int diagonal=checkDiagonal(2,grid);
+  if(horizontal==0 && diagonal==0){
+    LPC_GPIO2->FIOPIN=0x10;
+  }else if(horizontal==1){
+    LPC_GPIO2->FIOPIN=0x20;
+  }else{
+    LPC_GPIO2->FIOPIN=0x40;
+  }
+}
+
+----------------------------------------------------------------------------------------------------
+.model small
+.stack
+.data
+connect4 DB 0, 0, 0, 0, 0, 0, 0
+	 DB 0, 0, 2, 0, 0, 0, 0
+	 DB 0, 0, 2, 1, 1, 1, 0
+	 DB 0, 1, 2, 2, 1, 1, 2
+	 DB 2, 2, 2, 2, 1, 2, 1
+	 DB 1, 2, 1, 1, 1, 2, 2
+.code
+.startup
+			MOV CX, 6			; counter rows
+			XOR SI, SI			; index of matrix
+			MOV DL, 1			; player to check
+			XOR AL, AL			; result
+cycle1:			PUSH SI
+			PUSH CX
+			MOV CX, 4
+cycle2:			PUSH SI
+			CMP connect4[SI], DL		; compare the cell with the player number
+			JNE continue			; if it isn't equal to the player, it isn't a quadrupla
+			ADD SI, 1			; go forward
+			CMP connect4[SI], DL		
+			JNE continue
+			ADD SI, 1
+			CMP connect4[SI], DL		
+			JNE continue
+			ADD SI, 1
+			CMP connect4[SI], DL		
+			JNE continue
+			MOV AL, 1			; a quaduple is found
+continue:		POP SI
+			ADD SI, 1			; go to next cell
+			LOOP cycle2
+			POP CX
+			POP SI
+			ADD SI, 7			; go to next line
+			LOOP cycle1
+
+
+			MOV CX, 6			; counter rows
+			MOV SI, 21			; index of matrix
+			XOR AH, AH			; result
+cycle1D:		PUSH SI
+			PUSH CX
+			MOV CX, 4
+cycle2D:		PUSH SI
+			CMP connect4[SI], DL		; compare the cell with the player number
+			JNE continueD			; if it isn't equal to the player, it isn't a quadrupla
+			SUB SI, 6			; go forward
+			CMP connect4[SI], DL		
+			JNE continueD
+			SUB SI, 6
+			CMP connect4[SI], DL		
+			JNE continueD
+			SUB SI, 6
+			CMP connect4[SI], DL		
+			JNE continueD
+			MOV AH, 1			; a quaduple is found
+continueD:		POP SI
+			ADD SI, 1			; go to next cell
+			LOOP cycle2D
+			POP CX
+			POP SI
+			ADD SI, 7			; go to next line
+			LOOP cycle1D
+.exit
+end
+

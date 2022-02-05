@@ -1,0 +1,183 @@
+binaryGCD		PROC
+			EXPORT binaryGCD
+			PUSH {r4, LR}
+			; r0 = x
+			; r1 = y
+			EOR r2, r2		; r2 = g
+cycle1			AND r3, r0, #1		; get the LSB of x
+			LSL r3, #1		; shift to second bit
+			AND r3, r1, #1		; get the LSB of y
+			ORR r3, r3, r4		; union of results
+			CMP r3, #2_00		
+			BNE nonBothEven
+			; x and y are both even
+			LSL r3, #1		; x/2
+			LSL r4, #1		; y/2
+			ADD r2, #1		; g+1
+			B cycle1
+nonBothEven		TST r0, #1		; check the first bit
+			BNE xOdd
+			LSL r0, #1		; x/2
+			B nonBothEven
+xOdd			TST r1, #1		; check the fist bit
+			BNE yOdd
+			LSL r1, #1		; y/2
+			B xOdd
+yOdd			CMP r0, r1
+			BLO xLoy
+			; x>=y
+			SUB r0, r0, r1		; x=x-y
+			B continue
+xLoy			SUB r1, r1, r0		; y=y-x
+continue		CMP r0, #0
+			BNE nonBothEven		; loop until x!=0
+			MOV r0, r1
+			LSL r0, r2
+			POP {r4, PC}
+			ENDP
+
+binaryExtendedGCD	PROC
+			EXPORT binaryExtendedGCD
+			PUSH {r4-r10,LR}
+			; r0 = x
+			; r1 = y
+			EOR r2, r2		; r2 = g
+cycle1			AND r3, r0, #1		; get the LSB of x
+			LSL r3, #1		; shift to second bit
+			AND r3, r1, #1		; get the LSB of y
+			ORR r3, r3, r4		; union of results
+			CMP r3, #2_00		
+			BNE nonBothEven
+			; x and y are both even
+			LSL r3, #1		; x/2
+			LSL r4, #1		; y/2
+			ADD r2, #1		; g+1
+			B cycle1
+nonBothEven		MOV r3, r0		; r3 = u
+			MOV r4, r1		; r4 = v
+			MOV r5,	#1		; r5 = A
+			EOR r6, r6		; r6 = B
+			EOR r7, r7		; r7 = C
+			MOV r8, #1		; r8 = D
+			x RN 0
+			y RN 1
+			g RN 2
+			u RN 3
+			v RN 4
+			A RN 5
+			B RN 6
+			C RN 7
+   			D RN 8
+cycle2			TST r0, #1		; check the first bit
+			BNE xOdd
+			LSL r0, #1		; x/2
+			AND r9, A, #1		; take LSB of A
+			LSL r9, #1		; shift in second bit
+			AND r10, B, #1		; take LSB of B
+			ORR r9, r9, r10		; union of results
+			CMP r9, #2_00
+			BNE ABnotEven
+				ASR A, #1	; A=A/2
+				ASR B, #1	; B=B/2
+				B continueAB
+ABnotEven		ADD A, A, v		; A=A+v
+			ASR A, #1		; A=A/2
+			SUB B, B, u		; B=B-u
+			ASR B, #1		; B=B/2
+continueAB		B cycle2
+xOdd			TST r1, #1		; check the fist bit
+			BNE yOdd
+			LSL r1, #1		; y/2
+			AND r9, C, #1		; take LSB of C
+			LSL r9, #1		; shift in second bit
+			AND r10, D, #1		; take LSB of D
+			ORR r9, r9, r10		; union of results
+			CMP r9, #2_00
+			BNE CDnotEven
+				ASR C, #1	; C=C/2
+				ASR D, #1	; D=D/2
+				B continueCD
+CDnotEven		ADD C, C, v		; A=A+v
+			ASR C, #1		; A=A/2
+			SUB D, D, u		; B=B-u
+			ASR D, #1		; B=B/2
+continueCD		B xOdd
+yOdd			CMP r0, r1
+			BLO xLoy
+			; x>=y
+			SUB r0, r0, r1		; x=x-y
+			SUB A, A, C
+			SUB B, B, D
+			B continue
+xLoy			SUB r1, r1, r0		; y=y-x
+			SUB C, C, A
+			SUB D, D, B
+continue		CMP r0, #0
+			BNE cycle2		; loop until x!=0
+			MOV r0, C
+			POP {r4-r10,PC}
+			ENDP
+
+startTimer		PROC
+    			EXPORT startTimer
+			; 100MHz i want that the timer must tick every 0.1s= 1/10s
+			LDR r0, =10000000;
+			
+			LDR r1, =Control	; control = address of control register
+			EOR r2, r2
+			STR r2, [r1]		; stop the timer
+
+			LDR r1, =Reload		; reload = address of reload register
+			STR r0, [r1]		; set the time
+			
+			LDR r1, =Current	; curret = address of current register
+			STR r0, [r1]		; random value
+			
+			LDR r1, =Control
+			MOV r0, #7		; 7 to start the timer
+			STR r0, [r1]		; start the timer	
+
+			ENDP
+
+stopTimer		PROC
+ 			LDR r0, =Control	; control = address of control register
+			EOR r1, r1
+			STR r1, [r0]		; stop the timer
+			ENDP
+
+
+extern int binaryGCD(int x, int y);
+extern int binaryExtendedGCD(int x, int y);
+extern void startTimer(void);
+extern void stopTimer(void);
+
+int ticks=0;
+int absD;
+
+int main(void){
+  int x=27;
+  int y=41;
+  int z=binaryGCD(x,y);
+  int C=binaryExtendedGCD(x,y);
+  int D=(z-C*x)/y;
+  int absC= C>=0?C:-C;
+  absD= D>=0?D:-D;
+
+  if(absC>255) LPC_GPIO2->FIOPIN=0xFF;
+  else LPC_GPIO2->FIOPIN=absC;
+
+  startTimer();
+   
+  while(1);
+}
+
+SysTick_Handler(){
+  startTimer();
+  if(ticks!=20){
+    ticks++;
+  }else{
+    if(absD>255) LPC_GPIO2->FIOPIN=0xFF;
+    else LPC_GPIO2->FIOPIN=absD;
+    stopTimer();
+  }
+}

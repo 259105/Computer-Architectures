@@ -1,0 +1,22 @@
+Specification 1
+input	radical
+1	1
+2	2
+3	3
+4	2
+34	34 = 0x22
+24408	678 = 0x2A6
+
+Specification 2
+input	coprime (1 yes, 0 no)
+24, 30	0
+24, 15	0
+24, 17	1
+7, 7	0
+
+Specification 3
+input	number of exceptions
+1	4
+2	0
+243	4
+576	1
